@@ -1,0 +1,143 @@
+* {
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Google Sans', sans-serif;
+}
+
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fcfcfc;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  height: 30px;
+  padding: 20px;
+}
+
+.nav-links {
+  display: flex;
+  gap: 20px;
+
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: #007bff;
+  font-size: 1.25rem;
+}
+
+.nav-links a:hover {
+  text-decoration: underline;
+  color: #005cbe;
+}
+
+
+.create-post-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+  overflow: hidden;
+}
+
+.create-post-section h1 {
+  margin-bottom: 20px;
+  font-size: 2.5rem;
+  color: #333;
+}
+
+.create-post-section form {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  width: 400px;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 24px;
+}
+
+.create-post-section input[type="file"] {
+  padding: 10px;
+}
+
+.create-post-section input[type="text"] {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1.2rem;
+  font-family: 'Google Sans', sans-serif;
+}
+
+.create-post-section button {
+  padding: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 24px;
+  cursor: pointer;
+  font-size: 1.25rem;
+  font-family: 'Google Sans', sans-serif;
+}
+
+.create-post-section button:hover {
+  background-color: #006fe6;
+}
+
+.feed-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px;
+}
+
+.feed-section h1 {
+  margin-bottom: 20px;
+  font-size: 2.5rem;
+  color: #333;
+}
+
+.post-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.post-card {
+  width: 400px;
+  border: 1px solid #ccc;
+  border-radius: 24px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.post-card img {
+  width: 100%;
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+
+.post-card p {
+  font-size: 1.2rem;
+  color: #555;
+}
