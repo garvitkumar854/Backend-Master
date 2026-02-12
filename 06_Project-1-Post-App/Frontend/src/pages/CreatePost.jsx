@@ -8,7 +8,7 @@ const CreatePost = () => {
     const formData = new FormData(e.target);
 
     axios
-      .post("http://localhost:3000/create-post", formData)
+      .post("//localhost:3000/create-post", formData)
       .then((response) => {
         console.log("Post Created:", response.data);
         alert("Post Created Successfully!");
