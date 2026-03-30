@@ -1,139 +1,124 @@
-# Spotify Clone - Authentication & Authorization Learning Project
+# 08 Spotify Authentication - RBAC Music Backend
 
-Learn core backend concepts: **Authentication**, **Authorization**, **Middlewares**, **Role-Based Access Control**, and **JWT Tokens**.
+This module is a Spotify-style backend with authentication and role-based access.
 
----
+Roles:
+1. user: can browse/listen
+2. artist: can upload music and create albums
 
-## 📚 Project Concepts
+## Existing Code Process
 
-### Two Types of Users
+1. Basic server creation
+- server.js loads app, connects DB, starts on port 3000.
 
-| User Type | Role | Permissions |
-|-----------|------|-------------|
-| **Normal User** | Listener | Browse and listen to music |
-| **Artist** | Creator | Create, upload, and manage music |
+2. MongoDB database connection
+- src/db/db.js connects using MONGO_URI.
 
----
+3. User and music models
+- src/models/user.model.js: username, email, password, role.
+- src/models/music.model.js: uri, title, artist reference.
+- src/models/album.model.js: title, musics array, artist reference.
 
-## 🚀 Implementation Workflow
+4. Auth APIs
+- src/controllers/auth.controller.js
+- Register: hashes password, creates user, sets token cookie.
+- Login: verifies credentials, sets token cookie.
+- Logout: clears cookie.
 
-### Phase 1: Database & User Model Setup
+5. Middleware and router creation
+- src/middlewares/auth.middleware.js
+  - authArtist: only artist role.
+  - authUser: any authenticated role.
+- src/routes/auth.routes.js and src/routes/music.routes.js define API map.
 
-**Objective**: Create a secure user authentication system
+6. Music upload and album flow
+- Multer reads uploaded file.
+- storage.service uploads to ImageKit.
+- music.controller creates music and albums in MongoDB.
 
-- Create MongoDB database connection
-- Create User model with fields: username, email, password (hashed), role
-- Define schema validation rules
-- **Learning Point**: Always hash passwords before storing in the database (never store plain text)
+## Essential Packages and Purpose
 
-### Phase 2: User Registration API
+1. express
+- HTTP server and routes.
 
-**Objective**: Allow users to create accounts securely
+2. mongoose
+- Schema/model and database queries.
 
-Steps to implement:
-1. Accept user data (email, username, password)
-2. Validate input data
-3. Check if user already exists in database
-4. Hash password using `bcryptjs` package
-5. Store user in database
-6. Generate JWT token for authentication
-7. Store token in HTTP-only cookie
-8. Return success response
+3. bcryptjs
+- Password hashing and comparison.
 
-**Security Best Practice**:
-```
-- Use bcryptjs for password hashing (never use plain MD5 or SHA1)
-- Store hashed password, never the original password
-- Use HTTP-only cookies to prevent XSS attacks
-- Validate all input data on the server side
-```
+4. jsonwebtoken
+- JWT auth tokens.
 
-### Phase 3: User Login API
+5. cookie-parser
+- Cookie parsing for auth token.
 
-**Objective**: Authenticate users and maintain sessions
+6. multer
+- Multipart upload parsing.
 
-Login function supports **two authentication methods**:
-- Email + Password
-- Username + Password
+7. @imagekit/nodejs
+- Cloud file upload for music media.
 
-Steps to implement:
-1. Accept credentials (email or username + password)
-2. Find user in database by email or username
-3. Compare provided password with stored hash using bcryptjs
-4. If valid: Generate JWT token
-5. Store token in secure HTTP-only cookie
-6. Export both `registerUser` and `loginUser` functions
+8. dotenv
+- Env variable loading.
 
-**Learning Point**: 
-- Hashing is one-way encryption (can't reverse it)
-- Always compare hashes using bcryptjs.compare() method
-- Tokens should have expiration time for security
+## Environment Setup
 
-### Phase 4: Music Model & Routes
+Create .env file:
 
-**Objective**: Create role-based music management system
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret
+IMAGEKIT_PRIVATE_KEY=your_imagekit_private_key
+IMAGEKIT_PUBLIC_KEY=your_imagekit_public_key
+IMAGEKIT_URL_ENDPOINT=your_imagekit_url_endpoint
 
-Music Model fields:
-- `title` - Name of the song
-- `image` - Album/cover art URL
-- `artist` - Reference to Artist (User ID from User Model)
-- `createdAt` - Timestamp
-- `duration` - Song length
+## API Reference
 
-Create music route behavior:
-- Create separate routes for different user roles
-- Only Artists can create music
-- Normal Users can only view/listen
-- Implement authorization middleware to verify user role
+### Auth
+1. POST /api/auth/register
+- Body: { "username": "...", "email": "...", "password": "...", "role": "user|artist" }
 
-### Phase 5: API Protection with Middleware
+2. POST /api/auth/login
+- Body: { "username": "..." or "email": "...", "password": "..." }
 
-**Objective**: Secure endpoints based on user roles
+3. POST /api/auth/logout
+- Clears cookie token.
 
-Implementation:
-- Create authentication middleware to verify JWT token
-- Create authorization middleware to check user role
-- Apply middleware to music endpoints:
-  - `GET /music` - Available to all authenticated users
-  - `POST /music` - Available only to Artists
-  - `DELETE /music/:id` - Available only to Artist (owner) or Admin
+### Music
+1. POST /api/music/upload
+- Protected: artist only
+- multipart/form-data
+- Fields: music (file), title (text)
 
-**Security Concept**:
-```
-Authentication = Who are you? (login verification)
-Authorization = What are you allowed to do? (permission verification)
-```
+2. POST /api/music/album
+- Protected: artist only
+- Body: { "title": "...", "musics": ["musicObjectId1", "musicObjectId2"] }
 
----
+3. GET /api/music/
+- Protected: authenticated user/artist
+- Returns music list.
 
-## 📋 Setup & Testing Checklist
+4. GET /api/music/albums
+- Protected: authenticated user/artist
 
-- [ ] Install dependencies: `npm install`
-- [ ] Configure MongoDB connection
-- [ ] Run server and verify it starts without errors
-- [ ] Test Register API with Postman/Insomnia
-- [ ] Test Login API with different credentials
-- [ ] Verify JWT tokens are generated
-- [ ] Test Music creation (verify Artist role required)
-- [ ] Test protected routes with and without token
+5. GET /api/music/albums/:albumId
+- Protected: authenticated user/artist
 
----
+## Run Instructions
 
-## 🔐 Key Packages Used
+1. Install dependencies
+- npm install
 
-- **`bcryptjs`** - Password hashing and verification
-- **`jsonwebtoken`** - JWT token generation and verification
-- **`mongoose`** - MongoDB object modeling
-- **`express`** - Web framework
-- **`dotenv`** - Environment variable management
+2. Configure .env
 
----
+3. Start dev server
+- npm run dev
 
-## 💡 Learning Outcomes
+4. Start production-like
+- npm start
 
-After completing this project, you will understand:
-1. How password hashing protects user data
-2. How JWT tokens work for authentication
-3. Difference between authentication and authorization
-4. How to implement role-based access control
-5. How to secure API endpoints with middleware
+## Notes
+
+1. Add request validation to reject empty title/files.
+2. Set cookie options (httpOnly, sameSite, secure in production).
+3. Add pagination/filtering for list endpoints.
