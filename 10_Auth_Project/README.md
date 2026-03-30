@@ -1,192 +1,328 @@
-# 10_Auth_Project
+# Auth Project (JWT + Refresh Session + OTP Email Verification)
 
-This project implements JWT authentication with a session-based refresh token strategy.
+This project is a complete authentication backend built with Express and MongoDB.
 
-## Auth and Session Concept
+It teaches practical auth patterns:
+1. Account registration with hashed password.
+2. Email verification using OTP.
+3. Login with JWT access token.
+4. Refresh token rotation using secure cookie + DB session hash.
+5. Single-device logout and logout-all-devices.
 
-### Token Types
+This README is written as a future reference so you can quickly understand the codebase, run it, debug it, and improve it.
 
-1. Access Token
-- Short-lived token for protected APIs.
-- Includes: `id`, `role`, `sessionId`.
-- TTL: 15 minutes.
-- Client storage: memory (recommended).
+## 1. Quick Start
 
-2. Refresh Token
-- Long-lived token used only to get a new access token.
-- TTL: 7 days.
-- Sent and stored in `httpOnly` cookie.
-- Stored in DB as a hash (not plain token).
+### Prerequisites
 
-### Session Model (MongoDB)
+- Node.js 18+
+- MongoDB local/Atlas
+- Gmail sender setup (App Password or OAuth2)
 
-Each login/register creates one session document:
-
-- `user`: ObjectId of user
-- `refreshToken`: bcrypt hash of refresh token
-- `ip`: request IP
-- `userAgent`: device/browser details
-- `revoke`: session active/inactive flag
-- `createdAt`, `updatedAt`: timestamps
-
-### Session Lifecycle
-
-1. Register or Login
-- Server creates refresh token.
-- Server hashes refresh token.
-- Server creates session entry in DB.
-- Server returns access token and sets refresh token cookie.
-
-2. Refresh Access Token (`/auth/refresh-token`)
-- Server reads refresh token from cookie.
-- Validates JWT signature and expiry.
-- Finds active session (`revoke: false`) for user.
-- Compares incoming token with hashed token in DB.
-- Rotates refresh token (new token + new hash).
-- Sends new access token + new refresh cookie.
-
-3. Logout (`/auth/logout`)
-- Verifies incoming refresh token.
-- Marks matching session `revoke: true`.
-- Clears refresh token cookie.
-
-4. Logout All (`/auth/logout-all`)
-- Revokes all active sessions for the user.
-- Clears refresh token cookie.
-
-## Security Notes
-
-- Keep access token TTL short.
-- Do not store refresh token in local storage.
-- Use `httpOnly`, `secure`, `sameSite` cookies for refresh token.
-- Hash refresh tokens before saving in database.
-
-## Required Environment Variables
-
-Create `.env` in project root:
-
-```env
-# App
-NODE_ENV=development
-PORT=3000
-
-# Database
-MONGO_URI=mongodb://127.0.0.1:27017/auth-project
-
-# JWT
-JWT_SECRET=your_jwt_secret_here
-
-# Google OAuth + Gmail API (for Nodemailer)
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-GOOGLE_REDIRECT_URI=https://developers.google.com/oauthplayground
-GOOGLE_REFRESH_TOKEN=your_google_refresh_token
-GOOGLE_USER=your_gmail_address@gmail.com
-```
-
-`GOOGLE_REFRESH_TOKEN` and `GOOGLE_USER` are required to send email via Gmail OAuth2.
-
-## Nodemailer + Gmail API Setup (Step by Step)
-
-### 1. Prepare Gmail Account
-
-1. Use the Gmail account you want as sender.
-2. Enable 2-Step Verification for that account.
-
-### 2. Create Google Cloud Project
-
-1. Open Google Cloud Console.
-2. Create a new project.
-3. Open APIs and Services.
-
-### 3. Enable Gmail API
-
-1. Go to Library.
-2. Search `Gmail API`.
-3. Enable it for your project.
-
-### 4. Configure OAuth Consent Screen
-
-1. Open OAuth consent screen.
-2. Choose External (or Internal for Workspace org).
-3. Fill app details.
-4. Add your Gmail account in Test users.
-
-### 5. Create OAuth Credentials
-
-1. Go to Credentials.
-2. Create Credentials -> OAuth client ID.
-3. Application type: Web application.
-4. Add authorized redirect URI:
-	 `https://developers.google.com/oauthplayground`
-5. Save and copy Client ID and Client Secret.
-
-### 6. Generate Refresh Token
-
-1. Open OAuth 2.0 Playground.
-2. Click settings icon (top-right):
-	 - Enable `Use your own OAuth credentials`.
-	 - Paste your Client ID and Client Secret.
-3. In scopes, select Gmail scope:
-	 `https://mail.google.com/`
-4. Click Authorize APIs.
-5. Sign in using the same Gmail user (`GOOGLE_USER`).
-6. Click Exchange authorization code for tokens.
-7. Copy refresh token and set it as `GOOGLE_REFRESH_TOKEN`.
-
-### 7. Install Packages
+### Install
 
 ```bash
-npm install nodemailer googleapis
+npm install
 ```
 
-### 8. Configure Transporter Example
+### Create `.env`
 
-```js
-const nodemailer = require('nodemailer');
-const { google } = require('googleapis');
+```env
+# Core
+NODE_ENV=development
+PORT=3000
+MONGO_URI=mongodb://127.0.0.1:27017/auth-project
+JWT_SECRET=replace_with_strong_secret
 
-const oAuth2Client = new google.auth.OAuth2(
-	process.env.GOOGLE_CLIENT_ID,
-	process.env.GOOGLE_CLIENT_SECRET,
-	process.env.GOOGLE_REDIRECT_URI
-);
+# Email sender identity (required for sending OTP emails)
+GOOGLE_USER=your_email@gmail.com
 
-oAuth2Client.setCredentials({
-	refresh_token: process.env.GOOGLE_REFRESH_TOKEN
-});
+# Option A: Gmail App Password (easiest for local development)
+GOOGLE_APP_PASSWORD=your_16_char_app_password
 
-async function createTransporter() {
-	const accessToken = await oAuth2Client.getAccessToken();
+# Option B: OAuth2 (use this if not using app password)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=https://developers.google.com/oauthplayground
+GOOGLE_REFRESH_TOKEN=
+```
 
-	return nodemailer.createTransport({
-		service: 'gmail',
-		auth: {
-			type: 'OAuth2',
-			user: process.env.GOOGLE_USER,
-			clientId: process.env.GOOGLE_CLIENT_ID,
-			clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-			refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
-			accessToken: accessToken.token
-		}
-	});
+### Run
+
+```bash
+npm run dev
+```
+
+Server base URL:
+
+```txt
+http://localhost:3000
+```
+
+Auth API base URL:
+
+```txt
+http://localhost:3000/api/auth
+```
+
+## 2. Project Structure
+
+```txt
+server.js                  # Entry point: connect DB and start server
+src/app.js                 # Express app setup, middleware, routes
+src/config/config.js       # Environment variable loading + exports
+src/config/database.js     # MongoDB connection
+src/controllers/auth.controller.js
+src/routes/auth.routes.js
+src/models/user.model.js
+src/models/session.model.js
+src/models/otp.model.js
+src/services/email.service.js
+src/utils/otp.util.js
+```
+
+## 3. Authentication Architecture
+
+### Token Strategy
+
+1. Access token
+- Purpose: authorize protected routes.
+- Storage: client memory recommended.
+- Lifetime: 15 minutes.
+- Payload: `id`, `role`, `sessionId`.
+
+2. Refresh token
+- Purpose: issue new access tokens.
+- Storage: `httpOnly` cookie.
+- Lifetime: 7 days.
+- Database: only bcrypt hash is stored (never raw token).
+
+### Session Strategy
+
+Each successful login creates a session document with:
+- `user` (ObjectId)
+- `refreshToken` (bcrypt hash)
+- `ip`
+- `userAgent`
+- `revoke` (boolean)
+- timestamps
+
+This enables per-device control and refresh-token revocation.
+
+## 4. End-to-End Flow
+
+### Register
+
+1. Validate input (`fullName`, `username`, `email`, `password`).
+2. Normalize username/email to lowercase.
+3. Check duplicates.
+4. Hash password and create user.
+5. Generate 6-digit OTP and hash it.
+6. Save OTP hash in `otps` collection.
+7. Send OTP email.
+
+### Verify Email
+
+1. Receive `email` + `otp`.
+2. Fetch latest OTP document for email.
+3. Compare OTP using bcrypt.
+4. Mark user `verified: true`.
+5. Delete OTP records for that user.
+
+### Login
+
+1. Validate credentials.
+2. Verify password hash.
+3. Block if user not verified.
+4. Create refresh token (7d).
+5. Hash refresh token and store in session.
+6. Create access token (15m).
+7. Set refresh token in secure cookie.
+
+### Refresh Token
+
+1. Read refresh token from cookie.
+2. Verify JWT.
+3. Find active session.
+4. Compare token with stored hash.
+5. Issue new access token.
+6. Rotate refresh token and update session hash.
+
+### Logout
+
+1. Read refresh token from cookie.
+2. Validate against active session hash.
+3. Mark session `revoke: true`.
+4. Clear refresh cookie.
+
+### Logout All
+
+1. Verify incoming refresh token.
+2. Revoke all active sessions of that user.
+3. Clear refresh cookie.
+
+## 5. API Reference
+
+Base path: `/api/auth`
+
+### `POST /register`
+
+Body:
+
+```json
+{
+  "fullName": "John Doe",
+  "username": "johndoe",
+  "email": "john@example.com",
+  "password": "Password123"
 }
-
-module.exports = { createTransporter };
 ```
 
-## Common Issues
+Success: `201 Created`
 
-- `invalid_grant`: refresh token expired or generated with wrong OAuth client.
-- `unauthorized_client`: OAuth consent/config mismatch.
-- `redirect_uri_mismatch`: redirect URI in credentials does not match actual URI.
-- `insufficient permissions`: wrong Gmail scope selected.
+### `GET /verify-email`
 
-## Auth Routes
+Current controller expects `email` and `otp` in request body.
 
-- `POST /auth/register`
-- `POST /auth/login`
-- `GET /auth/logout`
-- `GET /auth/logout-all`
-- `GET /auth/get-me`
-- `GET /auth/refresh-token`
+Body:
+
+```json
+{
+  "email": "john@example.com",
+  "otp": "123456"
+}
+```
+
+Success: `200 OK`
+
+### `POST /login`
+
+Body (username flow):
+
+```json
+{
+  "username": "johndoe",
+  "password": "Password123"
+}
+```
+
+Body (email flow):
+
+```json
+{
+  "email": "john@example.com",
+  "password": "Password123"
+}
+```
+
+Success: `200 OK`
+- Returns `accessToken` in JSON.
+- Sets `refreshToken` cookie.
+
+### `GET /refresh-token`
+
+Requires refresh cookie.
+
+Success: `200 OK`
+- Returns new access token.
+- Rotates refresh cookie.
+
+### `GET /get-me`
+
+Header:
+
+```txt
+Authorization: Bearer <access_token>
+```
+
+Success: `200 OK`
+
+### `GET /logout`
+
+Requires refresh cookie.
+
+Success: `200 OK`
+
+### `GET /logout-all`
+
+Requires refresh cookie.
+
+Success: `200 OK`
+
+## 6. Testing with Postman or Thunder Client
+
+1. Call `POST /register`.
+2. Read OTP from email inbox.
+3. Call `GET /verify-email` with body.
+4. Call `POST /login`.
+5. Copy `accessToken` for protected calls.
+6. Ensure cookie jar is enabled so refresh cookie is sent automatically.
+7. Call `GET /refresh-token` to get a new access token.
+8. Call `GET /logout` and `GET /logout-all` to validate revocation behavior.
+
+## 7. Security Notes
+
+- Passwords and refresh tokens are hashed before DB storage.
+- Refresh token is stored in `httpOnly` cookie.
+- Access token TTL is short to reduce compromise window.
+- Session records support device-aware revocation.
+
+Recommended next hardening:
+1. Add rate limiting on login/OTP endpoints.
+2. Add account lockout/backoff on repeated bad passwords.
+3. Add CSRF protection if using cookies across browser contexts.
+4. Add OTP expiration enforcement at query level.
+
+## 8. Common Issues and Fixes
+
+1. No refresh cookie in local testing
+- Reason: cookie is set with `secure: true`, which requires HTTPS.
+- Fix options:
+  - Use HTTPS locally (best), or
+  - Toggle cookie `secure` by environment for development.
+
+2. Email sending fails
+- Verify `GOOGLE_USER` is set.
+- Use either:
+  - `GOOGLE_APP_PASSWORD`, or
+  - OAuth2 trio (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`).
+
+3. Mongo connection error
+- Ensure `MONGO_URI` is valid and MongoDB is reachable.
+
+4. Invalid or expired token errors
+- Access token expired after 15m; call refresh endpoint using refresh cookie.
+
+## 9. Current Code Caveats (Good Learning Opportunities)
+
+These are useful improvements to practice next:
+
+1. `loginUser` query currently uses object keys `normalizedUsername` / `normalizedEmail` instead of schema keys `username` / `email`.
+2. `verifyEmail` route is registered as `GET` but expects body data; `POST` is usually more appropriate.
+3. `logoutUser` selects any active session without filtering by user from decoded token.
+4. OTP HTML says "valid for 10 minutes" but DB logic does not enforce explicit OTP expiry yet.
+
+Implementing these will improve correctness and security.
+
+## 10. Suggested Learning Roadmap
+
+If you revisit this project in future, improve in this order:
+
+1. Fix endpoint/method consistency (`verify-email` to `POST`).
+2. Fix login query bug and add unit tests for username/email login.
+3. Add middleware-based auth guard for protected routes.
+4. Add OTP expiration field + cleanup job.
+5. Add refresh token family/rotation replay detection.
+6. Add Swagger/OpenAPI docs and request validation (Joi/Zod).
+7. Add integration tests for full auth lifecycle.
+
+## 11. NPM Scripts
+
+```bash
+npm run dev     # Start with nodemon
+npm start       # Start with node
+```
+
+## 12. License
+
+ISC
