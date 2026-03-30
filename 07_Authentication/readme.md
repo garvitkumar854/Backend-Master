@@ -1,86 +1,119 @@
-# 07 Authentication - JWT Cookie Auth Basics
+# 07 Authentication - JWT Cookie Auth Basics 🔐
 
-This module introduces user registration and token-based authentication with cookies.
+This module introduces practical authentication with JWT and cookies, layered on Express + MongoDB.
 
-## Existing Code Process
+---
 
-1. Basic server creation
-- server.js starts app and DB connection.
-- Uses PORT from env or 3000.
+## 🎯 What You Learn
 
-2. MongoDB connection
-- src/db/db.js connects using MONGO_URI.
+- User registration flow
+- Token generation with JWT
+- Cookie-based authentication
+- Protected route verification pattern
 
-3. User model creation
-- src/models/user.model.js defines username, email (unique), password.
+---
 
-4. App middleware and router setup
-- src/app.js uses express.json() and cookie-parser.
-- Registers:
-  - /api/auth -> auth routes
-  - /api/posts -> post routes
+## 🧩 Build Sequence
 
-5. Register API creation
-- src/controllers/auth.controller.js registerUser
-- Checks duplicate email.
-- Creates user.
-- Generates JWT.
-- Sets token cookie.
+### 1) Server Startup
+- [server.js](server.js) connects DB and starts app
+- Port is read from env with fallback to 3000
 
-6. Protected route example
-- src/routes/post.routes.js reads token from cookie, verifies JWT, then allows create route.
+### 2) App Middleware and Route Mounting
+- [src/app.js](src/app.js) enables:
+  - `express.json()`
+  - `cookie-parser`
+- Route groups:
+  - `/api/auth`
+  - `/api/posts`
 
-## Essential Packages and Purpose
+### 3) Database Layer
+- [src/db/db.js](src/db/db.js) connects MongoDB using `MONGO_URI`
 
-1. express
-- API server and routing.
+### 4) User Model
+- [src/models/user.model.js](src/models/user.model.js)
+- Fields: username, email (unique), password
 
-2. mongoose
-- MongoDB models and DB access.
+### 5) Auth Controller Flow
+- [src/controllers/auth.controller.js](src/controllers/auth.controller.js)
+- Register flow:
+  1. Read body
+  2. Check duplicate email
+  3. Create user
+  4. Generate token
+  5. Set token cookie
 
-3. jsonwebtoken
-- Token generation and verification.
+### 6) Protected Route Pattern
+- [src/routes/post.routes.js](src/routes/post.routes.js)
+- Reads `token` from cookie
+- Verifies token with `JWT_SECRET`
+- Allows access only for valid tokens
 
-4. cookie-parser
-- Reads cookies from request.
+---
 
-5. dotenv
-- Loads env configuration.
+## 📡 API Map
 
-6. multer
-- Installed but not required in current auth flow.
+| Route Group | Method | Path | Purpose |
+|---|---|---|---|
+| Auth | POST | /api/auth/register | Create user + set auth token cookie |
+| Posts | POST | /api/posts/create | Protected sample route |
 
-## Environment Setup
+### Register Body Example
+```json
+{
+  "username": "garvit",
+  "email": "garvit@example.com",
+  "password": "12345678"
+}
+```
 
-Create .env in this folder:
+---
 
+## 🧰 Essential Packages and Purpose
+
+1. **express** - Server and routing
+2. **mongoose** - MongoDB connection and model operations
+3. **jsonwebtoken** - Token sign/verify
+4. **cookie-parser** - Read cookies from incoming requests
+5. **dotenv** - Manage environment configuration
+6. **multer** - Installed dependency, not central in current auth flow
+
+---
+
+## 🌍 Environment Setup
+
+Create `.env` in this folder:
+
+```env
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret
 PORT=3000
+```
 
-## Router and API Details
+---
 
-### Auth router
-- POST /api/auth/register
-  - Body: { "username": "...", "email": "...", "password": "..." }
+## ⚙️ Run Locally
 
-### Post router
-- POST /api/posts/create
-  - Requires token cookie named token
-  - Verifies JWT and user existence
+```bash
+npm install
+node server.js
+```
 
-## Run Instructions
+---
 
-1. Install dependencies
-- npm install
+## 🧠 Important Concepts
 
-2. Add .env
+1. JWT carries user identity in a signed token.
+2. Cookie storage makes token auto-sent by browser on requests.
+3. Protected routes should verify token before business logic.
+4. Duplicate email prevention is a core auth check.
 
-3. Start server
-- node server.js
+---
 
-## Important Notes
+## ⚠️ Important Notes
 
 1. Password is currently stored without hashing in this module.
-2. Add bcrypt hashing and validation for production.
-3. Add login route in auth.routes.js if you want full auth flow in this module.
+2. Add `bcryptjs` hashing before storing user password.
+3. Add login endpoint for complete auth lifecycle.
+4. Add input validation and centralized error handling.
+

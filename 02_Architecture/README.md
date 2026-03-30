@@ -1,38 +1,72 @@
-# 02 Architecture - Basic Express Structure
+# 02 Architecture - Express Foundation 🧱
 
-This folder demonstrates a clean beginner architecture for an Express app.
+This module shows the next step after a hello-world app: a cleaner and more intentional Express structure.
 
-## Existing Code Process
+---
 
-1. Basic server creation
-- File: server.js
-- Creates app instance and starts it on port 3000.
+## 🎯 Learning Goals
 
-2. Route creation
-- GET / -> returns Hello World
-- GET /home -> returns Home Page
+- Understand how an Express app is initialized
+- Understand route mapping with `app.get()`
+- Build confidence with a tiny but structured backend
 
-3. Package installation
-- express: Handles HTTP server and routing.
+---
 
-## Setup
+## 🧩 Build Sequence
 
-1. Install dependencies
-- npm install
+### 1) Server Setup
+- File: [server.js](server.js)
+- Creates Express app instance.
+- Starts server on port 3000.
 
-2. Start server
-- node server.js
+### 2) Route Setup
 
-3. Test endpoints
+| Method | Path | Purpose | Response |
+|---|---|---|---|
+| GET | / | Health/basic route | Hello World |
+| GET | /home | Home route example | Home Page |
+
+### 3) Package in Use
+- **express**: Handles HTTP server creation, routing, and request/response lifecycle.
+
+---
+
+## ⚙️ Run Locally
+
+### 1. Install dependencies
+```bash
+npm install
+```
+
+### 2. Start server
+```bash
+node server.js
+```
+
+### 3. Open routes
 - http://localhost:3000/
 - http://localhost:3000/home
 
-## Environment Variables
+---
 
-No environment variables are needed.
+## 🗂 Project Files
 
-## Folder Contents
+- [server.js](server.js): Main Express setup and route handlers
+- [package.json](package.json): Dependency manifest
+- [index.js](index.js): Additional starter file
 
-- server.js: Server setup and routes
-- package.json: Dependencies
-- index.js: Extra file
+---
+
+## 🌱 Core Concepts
+
+1. `const app = express()` creates the app object.
+2. `app.get(path, handler)` binds endpoint logic.
+3. `res.send()` sends response to client.
+4. `app.listen(port)` starts accepting requests.
+
+---
+
+## 🔐 Environment Variables
+
+No environment variables are required in this module.
+
