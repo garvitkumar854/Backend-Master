@@ -1,38 +1,82 @@
-# 01 Basic - Express Starter
+# 01 Basic - Express Starter 🚀
 
-This folder contains the first Express server setup with two simple routes.
+This module is the first step of your backend journey.
+It teaches how to create a basic Express server and expose simple routes.
 
-## Existing Code Process
+---
 
-1. Basic server creation
-- File: server.js
-- Express app is created and started on port 3000.
+## 🎯 What You Learn
 
-2. Route creation
-- GET / -> returns Hello World
-- GET /about -> returns About Page
+- How to create an Express app
+- How to define GET routes
+- How to run a Node server locally
+- How request and response work in a minimal API
 
-3. Package installation
-- express: Creates server and HTTP routes.
+---
 
-## Setup
+## 🧩 Existing Code Process
 
-1. Install dependencies
-- npm install
+### 1. Server Creation
+- Main file: [server.js](server.js)
+- Creates Express app instance.
+- Starts server on port 3000.
 
-2. Run server
-- node server.js
+### 2. Route Creation
+Two routes are defined:
 
-3. Test endpoints
+| Method | Route | Response |
+|---|---|---|
+| GET | / | Hello World |
+| GET | /about | About Page |
+
+### 3. Package Used
+- express: Web framework for server and routing.
+
+---
+
+## ⚙️ Setup and Run
+
+### 1. Install dependencies
+```bash
+npm install
+```
+
+### 2. Start server
+```bash
+node server.js
+```
+
+### 3. Test in browser or Postman
 - http://localhost:3000/
 - http://localhost:3000/about
 
-## Environment Variables
+---
 
-No environment variables are required in this folder.
+## 🗂 Folder Contents
 
-## Folder Contents
+- [server.js](server.js): Express server and route definitions
+- [package.json](package.json): Project metadata and dependencies
+- [index.js](index.js): Extra starter file
 
-- server.js: Express server and routes
-- package.json: Dependencies and metadata
-- index.js: Extra starter file
+---
+
+## 🌱 Important Concept Notes
+
+1. Express app is your HTTP server object.
+2. app.get(path, handler) maps a URL to code logic.
+3. res.send() sends response text to the client.
+4. app.listen(port) starts accepting incoming requests.
+
+---
+
+## 🔐 Environment Variables
+
+No environment variables are required in this module.
+
+---
+
+## ✅ Quick Validation Checklist
+
+- Server starts without error
+- Route / returns Hello World
+- Route /about returns About Page
