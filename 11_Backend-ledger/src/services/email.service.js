@@ -46,4 +46,11 @@ async function sendRegistrationEmail(userEmail, userName) {
     await sendEmail(userEmail, subject, text, html);
 }
 
-module.exports = { sendRegistrationEmail };
+async function sendTransactionEmail(userEmail, userName, transactionDetails) {
+    const subject = 'Transaction Notification from Backend Ledger';
+    const text = `Hi ${userName},\n\nA transaction has been made on your account:\n\n${transactionDetails}\n\nBest regards,\nThe Backend Ledger Team`;
+    const html = `<p>Hi ${userName},</p><p>A transaction has been made on your account:</p><pre>${transactionDetails}</pre><p>Best regards,<br>The Backend Ledger Team</p>`;
+    await sendEmail(userEmail, subject, text, html);
+}
+
+module.exports = { sendRegistrationEmail, sendTransactionEmail };
