@@ -1,49 +1,38 @@
-# Create Simulator 
 set ns [new Simulator] 
 
-# Trace file 
 set tf [open out.tr w] 
 $ns trace-all $tf 
 
-# NAM file 
 set nf [open out.nam w] 
 $ns namtrace-all $nf 
 
-# Create nodes 
 set n0 [$ns node] 
 set n1 [$ns node] 
 set n2 [$ns node] 
 set n3 [$ns node] 
 set n4 [$ns node] 
 
-# Create multi-hop links 
 $ns duplex-link $n0 $n1 1Mb 10ms DropTail 
 $ns duplex-link $n1 $n2 1Mb 10ms DropTail 
 $ns duplex-link $n2 $n3 1Mb 10ms DropTail 
 $ns duplex-link $n3 $n4 1Mb 10ms DropTail 
 
-# UDP Agent (Source) 
 set udp [new Agent/UDP] 
 $ns attach-agent $n0 $udp 
 
-# Null Agent (Destination) 
 set null [new Agent/Null] 
 $ns attach-agent $n4 $null 
 
-# Connect agents 
 $ns connect $udp $null 
 
-# CBR Traffic 
 set cbr [new Application/Traffic/CBR] 
 $cbr attach-agent $udp 
 $cbr set packetSize_ 512 
 $cbr set interval_ 0.1 
 
-# Start & Stop 
 $ns at 1.0 "$cbr start" 
 $ns at 4.0 "$cbr stop" 
 
-# Finish procedure 
 proc finish {} { 
 global ns tf nf 
 $ns flush-trace 
@@ -54,5 +43,4 @@ exit 0
 } 
 $ns at 5.0 "finish" 
 
-# Run simulation 
 $ns run 
