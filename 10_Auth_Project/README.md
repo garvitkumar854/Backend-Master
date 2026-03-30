@@ -1,55 +1,219 @@
-# Auth Project (JWT + Refresh Session + OTP Email Verification)
+# 🔐 10 Auth Project
 
-This project is a complete authentication backend built with Express and MongoDB.
+> <u>Production-style authentication backend</u> built with Express + MongoDB + JWT + Refresh Sessions + OTP Email Verification.
 
-It teaches practical auth patterns:
-1. Account registration with hashed password.
-2. Email verification using OTP.
-3. Login with JWT access token.
-4. Refresh token rotation using secure cookie + DB session hash.
-5. Single-device logout and logout-all-devices.
+This project is designed to teach and implement a full auth lifecycle:
+- ✅ Register user
+- ✅ Send OTP on email
+- ✅ Verify email account
+- ✅ Login with access + refresh token
+- ✅ Refresh token rotation
+- ✅ Logout (single session)
+- ✅ Logout all devices
 
-This README is written as a future reference so you can quickly understand the codebase, run it, debug it, and improve it.
+---
 
-## 1. Quick Start
+## 📚 Table of Contents
 
-### Prerequisites
+1. [Project Goal](#-project-goal)
+2. [Tech Stack](#-tech-stack)
+3. [Folder Map](#-folder-map)
+4. [Build Sequence (How Project Is Built)](#-build-sequence-how-project-is-built)
+5. [Authentication Flow](#-authentication-flow)
+6. [Hard Concepts Explained](#-hard-concepts-explained)
+7. [Environment Variables](#-environment-variables)
+8. [Run Locally](#-run-locally)
+9. [API Documentation](#-api-documentation)
+10. [Collections and Data Model](#-collections-and-data-model)
+11. [Testing Sequence (Postman/Thunder)](#-testing-sequence-postmanthunder)
+12. [Implementation Notes (Current Code)](#-implementation-notes-current-code)
+13. [Improvement Roadmap](#-improvement-roadmap)
 
-- Node.js 18+
-- MongoDB local/Atlas
-- Gmail sender setup (App Password or OAuth2)
+---
 
-### Install
+## 🎯 Project Goal
 
-```bash
-npm install
+Build a realistic auth backend where:
+- Passwords are never stored in plain text.
+- Email must be verified before login.
+- Access token is short-lived.
+- Refresh token is stored in cookie and rotated securely.
+- Sessions are revocable per device and globally.
+
+---
+
+## 🧰 Tech Stack
+
+### Core
+- Node.js
+- Express
+- MongoDB + Mongoose
+
+### Security/Auth
+- bcryptjs (password and refresh-token hashing)
+- jsonwebtoken (access + refresh token)
+- cookie-parser (read cookies)
+
+### Email/OTP
+- nodemailer (send OTP emails)
+
+### Dev Utilities
+- dotenv
+- nodemon
+
+See dependencies in [package.json](package.json).
+
+---
+
+## 🗂 Folder Map
+
+- [server.js](server.js) - bootstraps DB + HTTP server
+- [src/app.js](src/app.js) - express app + middleware + route mount
+- [src/config/config.js](src/config/config.js) - env loading + config export
+- [src/config/database.js](src/config/database.js) - mongoose connection
+- [src/routes/auth.routes.js](src/routes/auth.routes.js) - auth endpoints
+- [src/controllers/auth.controller.js](src/controllers/auth.controller.js) - auth business logic
+- [src/models/user.model.js](src/models/user.model.js) - user schema
+- [src/models/session.model.js](src/models/session.model.js) - refresh session schema
+- [src/models/otp.model.js](src/models/otp.model.js) - otp schema
+- [src/services/email.service.js](src/services/email.service.js) - mail transport + send
+- [src/utils/otp.util.js](src/utils/otp.util.js) - OTP generation and HTML template
+
+---
+
+## 🏗 Build Sequence (How Project Is Built)
+
+### 1) Server bootstrap
+1. App is imported from [src/app.js](src/app.js).
+2. DB is connected using [src/config/database.js](src/config/database.js).
+3. Server starts on configured PORT from [src/config/config.js](src/config/config.js).
+
+### 2) App-level middleware
+1. `express.json()` for JSON body parsing.
+2. `cookieParser()` for token cookies.
+3. `/api/auth` route mounted from [src/routes/auth.routes.js](src/routes/auth.routes.js).
+
+### 3) Config and environment
+1. dotenv loads `.env` in [src/config/config.js](src/config/config.js).
+2. Critical vars validated (`MONGO_URI`, `JWT_SECRET`).
+
+### 4) Database models
+1. User model: identity + role + password + verified flag.
+2. Session model: hashed refresh token + device info + revoke flag.
+3. OTP model: hashed OTP + user reference.
+
+### 5) Registration pipeline
+1. Validate user input.
+2. Normalize username and email.
+3. Check duplicates.
+4. Hash password.
+5. Create user.
+6. Generate OTP and hash OTP.
+7. Save OTP.
+8. Send email.
+
+### 6) Verification pipeline
+1. Receive email + otp.
+2. Find latest OTP entry.
+3. Compare entered OTP with hash.
+4. Mark user as verified.
+5. Remove OTP docs.
+
+### 7) Login pipeline
+1. Validate credentials.
+2. Find user with password selection.
+3. Reject unverified user.
+4. Compare password.
+5. Create refresh token (7d).
+6. Hash refresh token and store session.
+7. Create access token (15m).
+8. Set refresh token cookie.
+
+### 8) Refresh pipeline
+1. Read refresh cookie.
+2. Verify refresh JWT.
+3. Find active session.
+4. Compare incoming refresh token with stored hash.
+5. Issue new access token.
+6. Rotate refresh token and update DB hash.
+
+### 9) Logout pipeline
+- Single logout: revoke one session + clear cookie.
+- Logout all: revoke all sessions for user + clear cookie.
+
+---
+
+## 🔄 Authentication Flow
+
+```mermaid
+flowchart TD
+A[Register] --> B[Create User + Hash Password]
+B --> C[Generate OTP + Store Hash]
+C --> D[Send OTP Email]
+D --> E[Verify Email]
+E --> F[Login]
+F --> G[Create Session + Hash Refresh Token]
+G --> H[Return Access Token + Set Refresh Cookie]
+H --> I[Access Protected APIs]
+I --> J[Access Token Expires]
+J --> K[Call Refresh Token API]
+K --> L[Rotate Refresh Token + New Access Token]
+L --> I
+I --> M[Logout or Logout-All]
 ```
 
-### Create `.env`
+---
+
+## 🧠 Hard Concepts Explained
+
+### 1) Why `password` has `select: false`
+In [src/models/user.model.js](src/models/user.model.js), password is hidden by default so accidental leaks are avoided. Login explicitly does `.select('+password')`.
+
+### 2) Why refresh token is hashed in DB
+In [src/controllers/auth.controller.js](src/controllers/auth.controller.js), refresh token is hashed before storing in sessions collection. If DB leaks, raw refresh tokens are still not exposed.
+
+### 3) Why access token is short-lived
+Access token is 15 minutes, reducing misuse window. Long-lived session continuity is handled by refresh token rotation.
+
+### 4) Why session table exists
+Session docs allow revocation by device and all-devices logout behavior. Stateless JWT alone cannot easily support this control.
+
+### 5) Why OTP is hashed
+OTP hash in [src/models/otp.model.js](src/models/otp.model.js) ensures plain OTP is not stored in DB.
+
+---
+
+## 🌍 Environment Variables
+
+Create `.env` in project root:
 
 ```env
-# Core
 NODE_ENV=development
 PORT=3000
 MONGO_URI=mongodb://127.0.0.1:27017/auth-project
-JWT_SECRET=replace_with_strong_secret
+JWT_SECRET=replace_with_a_strong_secret
 
-# Email sender identity (required for sending OTP emails)
+# Email sender identity
 GOOGLE_USER=your_email@gmail.com
 
-# Option A: Gmail App Password (easiest for local development)
-GOOGLE_APP_PASSWORD=your_16_char_app_password
+# Option A: Gmail App Password
+GOOGLE_APP_PASSWORD=your_app_password
 
-# Option B: OAuth2 (use this if not using app password)
+# Option B: OAuth2 (if not using app password)
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=https://developers.google.com/oauthplayground
 GOOGLE_REFRESH_TOKEN=
 ```
 
-### Run
+Email logic is in [src/services/email.service.js](src/services/email.service.js).
+
+---
+
+## ▶️ Run Locally
 
 ```bash
+npm install
 npm run dev
 ```
 
@@ -59,132 +223,37 @@ Server base URL:
 http://localhost:3000
 ```
 
-Auth API base URL:
+Auth base URL:
 
 ```txt
 http://localhost:3000/api/auth
 ```
 
-## 2. Project Structure
+---
 
-```txt
-server.js                  # Entry point: connect DB and start server
-src/app.js                 # Express app setup, middleware, routes
-src/config/config.js       # Environment variable loading + exports
-src/config/database.js     # MongoDB connection
-src/controllers/auth.controller.js
-src/routes/auth.routes.js
-src/models/user.model.js
-src/models/session.model.js
-src/models/otp.model.js
-src/services/email.service.js
-src/utils/otp.util.js
-```
-
-## 3. Authentication Architecture
-
-### Token Strategy
-
-1. Access token
-- Purpose: authorize protected routes.
-- Storage: client memory recommended.
-- Lifetime: 15 minutes.
-- Payload: `id`, `role`, `sessionId`.
-
-2. Refresh token
-- Purpose: issue new access tokens.
-- Storage: `httpOnly` cookie.
-- Lifetime: 7 days.
-- Database: only bcrypt hash is stored (never raw token).
-
-### Session Strategy
-
-Each successful login creates a session document with:
-- `user` (ObjectId)
-- `refreshToken` (bcrypt hash)
-- `ip`
-- `userAgent`
-- `revoke` (boolean)
-- timestamps
-
-This enables per-device control and refresh-token revocation.
-
-## 4. End-to-End Flow
-
-### Register
-
-1. Validate input (`fullName`, `username`, `email`, `password`).
-2. Normalize username/email to lowercase.
-3. Check duplicates.
-4. Hash password and create user.
-5. Generate 6-digit OTP and hash it.
-6. Save OTP hash in `otps` collection.
-7. Send OTP email.
-
-### Verify Email
-
-1. Receive `email` + `otp`.
-2. Fetch latest OTP document for email.
-3. Compare OTP using bcrypt.
-4. Mark user `verified: true`.
-5. Delete OTP records for that user.
-
-### Login
-
-1. Validate credentials.
-2. Verify password hash.
-3. Block if user not verified.
-4. Create refresh token (7d).
-5. Hash refresh token and store in session.
-6. Create access token (15m).
-7. Set refresh token in secure cookie.
-
-### Refresh Token
-
-1. Read refresh token from cookie.
-2. Verify JWT.
-3. Find active session.
-4. Compare token with stored hash.
-5. Issue new access token.
-6. Rotate refresh token and update session hash.
-
-### Logout
-
-1. Read refresh token from cookie.
-2. Validate against active session hash.
-3. Mark session `revoke: true`.
-4. Clear refresh cookie.
-
-### Logout All
-
-1. Verify incoming refresh token.
-2. Revoke all active sessions of that user.
-3. Clear refresh cookie.
-
-## 5. API Reference
+## 📡 API Documentation
 
 Base path: `/api/auth`
 
-### `POST /register`
-
-Body:
+### 1) Register
+- Method: `POST`
+- Route: `/register`
+- Body:
 
 ```json
 {
   "fullName": "John Doe",
-  "username": "johndoe",
+  "username": "john_doe",
   "email": "john@example.com",
-  "password": "Password123"
+  "password": "Password123",
+  "role": "user"
 }
 ```
 
-Success: `201 Created`
-
-### `GET /verify-email`
-
-Current controller expects `email` and `otp` in request body.
-
-Body:
+### 2) Verify Email
+- Method: `GET`
+- Route: `/verify-email`
+- Current controller expects body:
 
 ```json
 {
@@ -193,20 +262,19 @@ Body:
 }
 ```
 
-Success: `200 OK`
-
-### `POST /login`
-
-Body (username flow):
+### 3) Login
+- Method: `POST`
+- Route: `/login`
+- Body (username or email):
 
 ```json
 {
-  "username": "johndoe",
+  "username": "john_doe",
   "password": "Password123"
 }
 ```
 
-Body (email flow):
+or
 
 ```json
 {
@@ -215,114 +283,130 @@ Body (email flow):
 }
 ```
 
-Success: `200 OK`
-- Returns `accessToken` in JSON.
-- Sets `refreshToken` cookie.
+Response includes:
+- `accessToken` in JSON
+- `refreshToken` in cookie
 
-### `GET /refresh-token`
-
-Requires refresh cookie.
-
-Success: `200 OK`
-- Returns new access token.
-- Rotates refresh cookie.
-
-### `GET /get-me`
-
-Header:
+### 4) Get Current User
+- Method: `GET`
+- Route: `/get-me`
+- Header:
 
 ```txt
 Authorization: Bearer <access_token>
 ```
 
-Success: `200 OK`
+### 5) Refresh Access Token
+- Method: `GET`
+- Route: `/refresh-token`
+- Requires `refreshToken` cookie.
 
-### `GET /logout`
+### 6) Logout (single session)
+- Method: `GET`
+- Route: `/logout`
+- Requires `refreshToken` cookie.
 
-Requires refresh cookie.
+### 7) Logout All Devices
+- Method: `GET`
+- Route: `/logout-all`
+- Requires `refreshToken` cookie.
 
-Success: `200 OK`
+Route map source: [src/routes/auth.routes.js](src/routes/auth.routes.js).
 
-### `GET /logout-all`
+---
 
-Requires refresh cookie.
+## 🗃 Collections and Data Model
 
-Success: `200 OK`
+### `users`
+Defined in [src/models/user.model.js](src/models/user.model.js):
+- fullName
+- username (unique)
+- email (unique)
+- role (`user` or `admin`)
+- password (hidden by default)
+- verified
+- timestamps
 
-## 6. Testing with Postman or Thunder Client
+### `sessions`
+Defined in [src/models/session.model.js](src/models/session.model.js):
+- user
+- refreshToken (hashed)
+- ip
+- userAgent
+- revoke
+- timestamps
 
-1. Call `POST /register`.
+### `otps`
+Defined in [src/models/otp.model.js](src/models/otp.model.js):
+- email
+- user
+- otpHash
+- timestamps
+
+---
+
+## 🧪 Testing Sequence (Postman/Thunder)
+
+1. Register user via `POST /register`.
 2. Read OTP from email inbox.
-3. Call `GET /verify-email` with body.
-4. Call `POST /login`.
-5. Copy `accessToken` for protected calls.
-6. Ensure cookie jar is enabled so refresh cookie is sent automatically.
-7. Call `GET /refresh-token` to get a new access token.
-8. Call `GET /logout` and `GET /logout-all` to validate revocation behavior.
+3. Verify via `GET /verify-email` with body.
+4. Login via `POST /login`.
+5. Save returned access token.
+6. Ensure cookie jar is enabled (refresh cookie must persist).
+7. Call `GET /get-me` with Bearer token.
+8. Call `GET /refresh-token` to rotate token.
+9. Call `GET /logout` and `GET /logout-all` to test revocation.
 
-## 7. Security Notes
+---
 
-- Passwords and refresh tokens are hashed before DB storage.
-- Refresh token is stored in `httpOnly` cookie.
-- Access token TTL is short to reduce compromise window.
-- Session records support device-aware revocation.
+## ⚠️ Implementation Notes (Current Code)
 
-Recommended next hardening:
-1. Add rate limiting on login/OTP endpoints.
-2. Add account lockout/backoff on repeated bad passwords.
-3. Add CSRF protection if using cookies across browser contexts.
-4. Add OTP expiration enforcement at query level.
+These are important for understanding current behavior:
 
-## 8. Common Issues and Fixes
+1. In login query, fields are currently used as `{ normalizedUsername }` and `{ normalizedEmail }` instead of `{ username: normalizedUsername }` and `{ email: normalizedEmail }` in [src/controllers/auth.controller.js](src/controllers/auth.controller.js). This can cause credential lookup failures.
 
-1. No refresh cookie in local testing
-- Reason: cookie is set with `secure: true`, which requires HTTPS.
-- Fix options:
-  - Use HTTPS locally (best), or
-  - Toggle cookie `secure` by environment for development.
+2. Cookie is set with `secure: true` in login/refresh. On plain HTTP local development, browser may not store cookie.
 
-2. Email sending fails
-- Verify `GOOGLE_USER` is set.
-- Use either:
-  - `GOOGLE_APP_PASSWORD`, or
-  - OAuth2 trio (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`).
+3. `verify-email` is a GET route but consumes request body. In HTTP practice, verification endpoints are usually `POST`.
 
-3. Mongo connection error
-- Ensure `MONGO_URI` is valid and MongoDB is reachable.
+4. `sendEmail` catches internal errors and logs them. Registration might still return success even when email send fails, depending on control flow.
 
-4. Invalid or expired token errors
-- Access token expired after 15m; call refresh endpoint using refresh cookie.
+5. Session and OTP models reference `users`, while user model name is `user`. If you rely on populate behavior later, align refs carefully.
 
-## 9. Current Code Caveats (Good Learning Opportunities)
+---
 
-These are useful improvements to practice next:
+## 🚀 Improvement Roadmap
 
-1. `loginUser` query currently uses object keys `normalizedUsername` / `normalizedEmail` instead of schema keys `username` / `email`.
-2. `verifyEmail` route is registered as `GET` but expects body data; `POST` is usually more appropriate.
-3. `logoutUser` selects any active session without filtering by user from decoded token.
-4. OTP HTML says "valid for 10 minutes" but DB logic does not enforce explicit OTP expiry yet.
+### Security
+- Add rate limiting on login/register/verify endpoints.
+- Add account lockout strategy after repeated failures.
+- Add CSRF protection if browser clients use cookies.
 
-Implementing these will improve correctness and security.
+### Correctness
+- Fix login query key mapping issue.
+- Switch verify-email endpoint to POST.
+- Add OTP expiry index (TTL) and explicit expiry validation.
 
-## 10. Suggested Learning Roadmap
+### API quality
+- Add centralized error middleware.
+- Add request validation middleware per endpoint.
+- Add standard response format with consistent error codes.
 
-If you revisit this project in future, improve in this order:
+### Testing
+- Add Jest + Supertest integration tests for:
+  - register -> verify -> login
+  - refresh token rotation
+  - logout and logout-all
 
-1. Fix endpoint/method consistency (`verify-email` to `POST`).
-2. Fix login query bug and add unit tests for username/email login.
-3. Add middleware-based auth guard for protected routes.
-4. Add OTP expiration field + cleanup job.
-5. Add refresh token family/rotation replay detection.
-6. Add Swagger/OpenAPI docs and request validation (Joi/Zod).
-7. Add integration tests for full auth lifecycle.
+---
 
-## 11. NPM Scripts
+## ✨ Learning Outcome
 
-```bash
-npm run dev     # Start with nodemon
-npm start       # Start with node
-```
+After understanding this project, you will be comfortable with:
+- Password hashing and secure credential flow
+- JWT access/refresh token strategy
+- Session revocation design
+- OTP-based email verification flow
+- Structuring auth in layered Express architecture
 
-## 12. License
-
-ISC
+If you want, next step can be a **Phase-2 README** with sequence diagrams for each endpoint and a fully copy-paste Postman collection JSON.
